@@ -1,0 +1,72 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: template-api#{ENV}
+  namespace: ingress-nginx
+  labels:
+    name: developmemt-label
+spec:
+  replicas: 2
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  minReadySeconds: 5 
+  template:
+    metadata:
+      labels:
+        app: template-api#{ENV}
+    spec:
+      containers:
+      - name: template-api#{ENV}
+        image: #{ACRname}.azurecr.io/template-api:___BuildNumber___
+        env:
+          - name: appSettings__RegionId
+            value: #{RegionId}
+          - name: appSettings__ConfigurationUrl
+            value: #{ConfigurationUrl}
+          - name: appSettings__StsUrl
+            value: #{StsUrl}
+          - name: appSettings__IngressRouteName
+            value: #{IngressRouteName}
+          - name: appSettings__IsSerializeException
+            value: #{IsSerializeException}
+          - name: ApplicationInsights__InstrumentationKey
+            value: #{InstrumentationKey}
+          - name: NEW_RELIC_APP_NAME
+            value: #{NEW_RELIC_APP_NAME}  
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: #{RequestCPU}
+          limits:
+            cpu: #{LimitCPU}
+      imagePullSecrets:
+      - name: dm-aks-nexxeacr-registrykey
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: template-api#{ENV}
+  namespace: ingress-nginx
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: template-api#{ENV}
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: template-api#{ENV}
+  namespace: ingress-nginx
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: template-api#{ENV}
+  minReplicas: #{MinReplicaSet}
+  maxReplicas: #{MaxReplicaSet}
+  targetCPUUtilizationPercentage: 70
